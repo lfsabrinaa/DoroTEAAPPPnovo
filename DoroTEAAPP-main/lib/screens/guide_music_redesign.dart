@@ -16,10 +16,10 @@ class _GuidedMusicState extends State<GuidedMusic> {
   static const String _espIp = 'http://192.168.40.113'; 
   
   // IP do Servidor Flask (Dados na Porta 5000)
-  static const String _flaskIp = 'http://192.168.40.154:5000'; 
+  static const String _flaskIp = 'http://192.168.18.186:5000'; 
 
   final List<Map<String, dynamic>> _defaultMusicList = [
-    { 'id': 'dorotea',
+ { 'id': 'dorotea',
       'title': 'DoroTEA',
       'artist': '3403',
       'audioUrl': 'assets/audios/DoroTEA.mp3',
@@ -62,7 +62,7 @@ class _GuidedMusicState extends State<GuidedMusic> {
       'isDeletable': false,
       'icon': Icons.favorite,
       'color': Colors.red,
-    }, 
+    },  
   ];
 
   late List<Map<String, dynamic>> _userMusicList;
@@ -395,6 +395,39 @@ class _GuidedMusicState extends State<GuidedMusic> {
             const SizedBox(height: 20),
           ],
         ),
+      ),
+      bottomNavigationBar: BottomNavigationBar(
+        backgroundColor: Theme.of(context).primaryColor,
+        selectedItemColor: Colors.white,
+        unselectedItemColor: Colors.white70,
+        currentIndex: 0,
+        onTap: (index) {
+          switch (index) {
+            case 0:
+              // Já está na tela atual
+              break;
+            case 1:
+              // Navegar para DoroTEA
+              break;
+            case 2:
+              // Navegar para Perfil
+              break;
+          }
+        },
+        items: const [
+          BottomNavigationBarItem(
+            icon: Icon(Icons.home),
+            label: 'Home',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.pets),
+            label: 'DoroTEA',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.person),
+            label: 'Perfil',
+          ),
+        ],
       ),
     );
   }

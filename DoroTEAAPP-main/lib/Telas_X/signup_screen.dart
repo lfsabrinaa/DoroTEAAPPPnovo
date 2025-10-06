@@ -120,9 +120,9 @@ class _SignUpScreenState extends State<SignUpScreen>
           hintText: hint,
           prefixIcon: Icon(
             icon,
-            color: isValid ? Colors.green : Theme.of(context).primaryColor,
+            color: Theme.of(context).primaryColor,
           ),
-          suffixIcon: suffixIcon ?? (isValid ? Icon(Icons.check_circle, color: Colors.green) : null),
+          suffixIcon: suffixIcon ?? (isValid ? Icon(Icons.check_circle_outline, color: Theme.of(context).primaryColor, size: 20) : null),
           filled: true,
           fillColor: Colors.grey[50],
           border: OutlineInputBorder(
@@ -132,14 +132,14 @@ class _SignUpScreenState extends State<SignUpScreen>
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(15),
             borderSide: BorderSide(
-              color: isValid ? Colors.green : Colors.grey[300]!,
+              color: isValid ? Theme.of(context).primaryColor.withOpacity(0.5) : Colors.grey[300]!,
               width: 1,
             ),
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(15),
             borderSide: BorderSide(
-              color: isValid ? Colors.green : Theme.of(context).primaryColor,
+              color: Theme.of(context).primaryColor,
               width: 2,
             ),
           ),
@@ -200,50 +200,51 @@ class _SignUpScreenState extends State<SignUpScreen>
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.check_circle, color: Colors.green, size: 60),
-            SizedBox(height: 16),
-            Text(
-              'Cadastro realizado!',
-              style: GoogleFonts.quicksand(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            SizedBox(height: 8),
-            Text(
-              'Sua conta foi criada com sucesso.',
-              textAlign: TextAlign.center,
-              style: GoogleFonts.roboto(fontSize: 16),
-            ),
-          ],
-        ),
-        actions: [
-          ElevatedButton(
-            onPressed: () {
-              Navigator.of(context).pop();
-              Navigator.pushReplacement(
-                context,
-                PageRouteBuilder(
-                  pageBuilder: (context, animation, secondaryAnimation) =>
-                      const LoginScreen(),
-                  transitionsBuilder: (context, animation, secondaryAnimation, child) {
-                    return FadeTransition(opacity: animation, child: child);
-                  },
+      builder: (context) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).primaryColor.withOpacity(0.1),
+                  shape: BoxShape.circle,
                 ),
-              );
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color.fromARGB(255, 64, 45, 94),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-            ),
-            child: Text('Fazer Login', style: GoogleFonts.quicksand(color: Colors.white)),
+                child: Icon(
+                  Icons.check,
+                  color: Theme.of(context).primaryColor,
+                  size: 32,
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Conta criada!',
+                style: GoogleFonts.quicksand(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Theme.of(context).primaryColor,
+                ),
+              ),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                    Navigator.pushReplacement(
+                      context,
+                      MaterialPageRoute(builder: (context) => const LoginScreen()),
+                    );
+                  },
+                  child: Text('Continuar', style: GoogleFonts.quicksand(fontWeight: FontWeight.bold)),
+                ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }

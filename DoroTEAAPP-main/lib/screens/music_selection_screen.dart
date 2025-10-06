@@ -1,13 +1,13 @@
-import 'package:http/http.dart' as http;
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:http/http.dart' as http;
 import 'package:just_audio/just_audio.dart';
+import 'dart:convert';
 import 'package:dorotea_app/screens/add_music_screen.dart';
 import 'package:dorotea_app/Telas_X/profile_screen.dart';
 import 'package:dorotea_app/Telas_X/about_screen.dart';
 import 'package:dorotea_app/Telas_X/home_screen.dart';
-import 'package:dorotea_app/constants.dart'; // apiUrl
+import 'package:dorotea_app/constants.dart';
 
 class MusicSelectionScreen extends StatefulWidget {
   final String email;
@@ -17,27 +17,20 @@ class MusicSelectionScreen extends StatefulWidget {
   State<MusicSelectionScreen> createState() => _MusicSelectionScreenState();
 }
 
-class _MusicSelectionScreenState extends State<MusicSelectionScreen> {
+class _MusicSelectionScreenState extends State<MusicSelectionScreen> with TickerProviderStateMixin {
   final List<Map<String, dynamic>> _defaultMusicList = [
     {
-      'id': 'bmp',
-      'title': '60 BPM',
-      'artist': 'Anônimo',
-      'audioUrl': 'assets/audios/bmp.mp3',
-      'isDeletable': false,
-    },
-    {
-      'id': 'brilha_estrelinha',
-      'title': 'Brilha Estrelinha',
-      'artist': 'Anônimo',
-      'audioUrl': 'assets/audios/brilha_brilha_estrelinha.mp3',
+      'id': 'dorotea',
+      'title': 'DoroTEA',
+      'artist': '3403',
+      'audioUrl': 'assets/audios/DoroTEA.mp3',
       'isDeletable': false,
     },
     {
       'id': 'clair_de_lune',
       'title': 'Clair de Lune',
       'artist': 'Claude Debussy',
-      'audioUrl': 'assets/audios/clair_de_lune.mp3',
+      'audioUrl': 'assets/audios/clairedelune.mp3',
       'isDeletable': false,
     },
     {
@@ -48,274 +41,337 @@ class _MusicSelectionScreenState extends State<MusicSelectionScreen> {
       'isDeletable': false,
     },
     {
-      'id': 'primavera',
-      'title': 'Primavera',
-      'artist': 'Vivaldi',
-      'audioUrl': 'assets/audios/primavera.mp3',
+      'id': 'brilha_estrelinha',
+      'title': 'Brilha Estrelinha',
+      'artist': 'Anônimo',
+      'audioUrl': 'assets/audios/bbee.mp3',
+      'isDeletable': false,
+    },
+    {
+      'id': 'bmp',
+      'title': '60 BPM',
+      'artist': 'Anônimo',
+      'audioUrl': 'assets/audios/bmp.mp3',
       'isDeletable': false,
     },
   ];
 
-  late List<Map<String, dynamic>> _userMusicList;
+  List<Map<String, dynamic>> _userMusicList = [];
   final _player = AudioPlayer();
   int? _playingIndex;
   int _selectedIndex = 0;
+  bool _isLoading = true;
+  late TabController _tabController;
+  String? _selectedMusicId; // ID da música selecionada como padrão
 
   @override
   void initState() {
     super.initState();
-    _userMusicList = [];
+    _tabController = TabController(length: 2, vsync: this);
     _loadUserMusic();
   }
 
   @override
   void dispose() {
     _player.dispose();
+    _tabController.dispose();
     super.dispose();
   }
 
-  void _onItemTapped(int index) {
-    setState(() {
-      _selectedIndex = index;
-    });
-
-    switch (index) {
-      case 0:
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => const HomeScreen(email: 'user@email.com')),
-        );
-        break;
-      case 1:
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => const AboutScreen()),
-        );
-        break;
-      case 2:
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => ProfileScreen(userEmail: widget.email),
-          ),
-        );
-        break;
-    }
-  }
-
-  // ✅ Corrigido: retorna Future<void> para RefreshIndicator
   Future<void> _loadUserMusic() async {
-    final String userEmail = widget.email;
-    if (userEmail.isEmpty) {
-      debugPrint('Usuário não logado.');
-      return;
-    }
-
-    final url = Uri.parse('${AppConfig.apiUrl}/musics/$userEmail');
+    setState(() => _isLoading = true);
+    
     try {
-      final response = await http.get(url);
+      final url = '${AppConfig.apiUrl}/downloadable_files';
+      final response = await http.get(Uri.parse(url));
+      
       if (response.statusCode == 200) {
-        final Map<String, dynamic> data = json.decode(response.body);
-        final List<dynamic> fetchedMusics = data['musics'];
-        final List<Map<String, dynamic>> userMusics =
-            List<Map<String, dynamic>>.from(fetchedMusics.map((music) {
-          return {
-            'id': music['id'].toString(),
-            'title': music['title'] ?? 'Sem Título',
-            'artist': music['artist'] ?? 'Sem Artista',
-            'audioUrl': music['audioUrl'] ?? '',
-            'isDeletable': music['isDeletable'] ?? true,
-          };
-        }));
+        final data = json.decode(response.body);
+        final List<dynamic> musicList = data['musics'] ?? [];
+        
         setState(() {
-          _userMusicList = userMusics;
+          _userMusicList = musicList.map<Map<String, dynamic>>((music) => {
+            'id': music['filename']?.toString() ?? '',
+            'title': _extractTitle(music['filename']?.toString() ?? ''),
+            'artist': _extractArtist(music['filename']?.toString() ?? ''),
+            'audioUrl': music['url']?.toString() ?? '',
+            'isDeletable': true,
+          }).toList();
+          _isLoading = false;
         });
-        debugPrint('Músicas do usuário carregadas com sucesso.');
       } else {
-        debugPrint('Erro ao carregar músicas: ${response.statusCode}');
+        setState(() {
+          _userMusicList = [];
+          _isLoading = false;
+        });
       }
     } catch (e) {
-      debugPrint('Erro de conexão ao carregar músicas: $e');
+      setState(() {
+        _userMusicList = [];
+        _isLoading = false;
+      });
     }
   }
 
-  Future<void> _deleteMusic(String musicId) async {
-    final url = Uri.parse('${AppConfig.apiUrl}/delete_music/$musicId');
-    try {
-      final response = await http.delete(url);
-      if (response.statusCode == 200) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Música deletada com sucesso!')),
-          );
-        }
-        await _loadUserMusic();
-      } else {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Erro ao deletar música.')),
-          );
-        }
-      }
-    } catch (e) {
-      debugPrint('Erro ao deletar música: $e');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Erro de conexão ao deletar música.')),
-        );
-      }
-    }
+  String _extractTitle(String filename) {
+    final nameWithoutExt = filename.replaceAll(RegExp(r'\.[^.]+$'), '');
+    final parts = nameWithoutExt.split('_');
+    return parts.length > 1 ? parts.sublist(1).join(' ') : nameWithoutExt;
+  }
+  
+  String _extractArtist(String filename) {
+    final nameWithoutExt = filename.replaceAll(RegExp(r'\.[^.]+$'), '');
+    final parts = nameWithoutExt.split('_');
+    return parts.isNotEmpty ? parts[0] : 'Desconhecido';
   }
 
-  Future<void> _playMusic(String audioUrl, int index) async {
+  Future<void> _playMusic(String audioUrl, int index, bool isUserMusic) async {
     try {
-      if (_player.playing) {
-        await _player.stop();
-      }
+      await _player.stop();
       if (audioUrl.startsWith('assets/')) {
         await _player.setAsset(audioUrl);
       } else {
         await _player.setUrl(audioUrl);
       }
       await _player.play();
-      setState(() {
-        _playingIndex = index;
-      });
-      _player.playerStateStream.listen((playerState) {
-        if (playerState.processingState == ProcessingState.completed) {
-          setState(() {
-            _playingIndex = null;
-          });
-        }
-      });
+      setState(() => _playingIndex = isUserMusic ? index : index + 1000);
     } catch (e) {
-      debugPrint('Erro ao tocar música: $e');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Erro ao tocar música. Verifique o URL.')),
-        );
-      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Erro ao tocar música')),
+      );
     }
   }
 
   void _pauseMusic() {
     _player.pause();
-    setState(() {
-      _playingIndex = null;
-    });
+    setState(() => _playingIndex = null);
   }
 
-  Widget _buildMusicSectionHeader(String title) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-      child: Text(
-        title,
-        style: GoogleFonts.quicksand(
-          fontSize: 20,
-          fontWeight: FontWeight.bold,
-          color: Colors.white,
-        ),
-      ),
-    );
+  Future<void> _deleteMusic(String filename) async {
+    try {
+      final response = await http.delete(Uri.parse('${AppConfig.apiUrl}/delete_music/$filename'));
+      if (response.statusCode == 200) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Música deletada com sucesso!')),
+        );
+        // Se a música deletada era a selecionada, limpa a seleção
+        if (_selectedMusicId == filename) {
+          setState(() {
+            _selectedMusicId = null;
+          });
+        }
+        _loadUserMusic();
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Erro ao deletar música')),
+      );
+    }
   }
 
-  Widget _buildMusicItem(BuildContext context, Map<String, dynamic> music, int index) {
-    final Color primaryPurple = Theme.of(context).primaryColor;
-    final bool isPlaying = _playingIndex == index;
-    return Card(
-      margin: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
-      elevation: 4,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
-      color: Colors.white,
-      child: ListTile(
-        leading: Icon(
-          isPlaying ? Icons.pause_circle_filled : Icons.play_circle_fill,
-          color: primaryPurple,
-          size: 40,
-        ),
-        title: Text(
-          music['title'] ?? 'Título Desconhecido',
-          style: const TextStyle(
-            color: Colors.black87,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        subtitle: Text(
-          music['artist'] ?? 'Artista Desconhecido',
-          style: TextStyle(
-            color: Colors.grey[600],
-          ),
-        ),
-        trailing: music['isDeletable'] ?? false
-            ? IconButton(
-                icon: const Icon(Icons.delete, color: Colors.red),
-                onPressed: () {
-                  _deleteMusic(music['id'].toString());
-                },
-              )
-            : null,
-        onTap: () async {
-          if (isPlaying) {
-            _pauseMusic();
-          } else {
-            _playMusic(music['audioUrl'], index);
-          }
-        },
-      ),
-    );
+  Future<void> _saveSelectedMusic(String musicId) async {
+    try {
+      final response = await http.post(
+        Uri.parse('${AppConfig.apiUrl}/set_default_music'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({
+          'email': widget.email,
+          'music_id': musicId,
+        }),
+      );
+      
+      if (response.statusCode == 200) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Música padrão definida!')),
+        );
+      }
+    } catch (e) {
+      print('Erro ao salvar música padrão: $e');
+    }
   }
 
-  Widget _buildAddMusicCard() {
+  Widget _buildMusicItem(Map<String, dynamic> music, int index, bool isUserMusic) {
+    final playIndex = isUserMusic ? index : index + 1000;
+    final isPlaying = _playingIndex == playIndex;
+    final isSelected = _selectedMusicId == music['id'];
+    
     return Container(
-      margin: const EdgeInsets.all(16.0),
-      padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
+        gradient: LinearGradient(
+          colors: isSelected 
+              ? [const Color(0xFFE1BEE7), const Color(0xFFF3E5F5)] 
+              : [Colors.white, Colors.grey[50]!],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(16),
+        border: isSelected 
+            ? Border.all(color: const Color(0xFF4A148C), width: 2)
+            : null,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 10,
-            offset: const Offset(0, 5),
+            color: const Color(0xFF4A148C).withOpacity(0.1),
+            blurRadius: 8,
+            offset: const Offset(0, 4),
           ),
         ],
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(
-            'Adicionar música',
-            style: GoogleFonts.quicksand(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: const Color(0xFF673AB7),
-            ),
+      child: ListTile(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+        leading: Container(
+          decoration: BoxDecoration(
+            color: const Color(0xFF4A148C).withOpacity(0.1),
+            borderRadius: BorderRadius.circular(12),
           ),
-          IconButton(
-            icon: const Icon(Icons.add_circle_outline, color: Color(0xFF673AB7)),
+          child: IconButton(
+            icon: Icon(
+              isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
+              color: const Color(0xFF4A148C),
+              size: 28,
+            ),
             onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => AddMusicScreen(email: widget.email),
-                ),
-              ).then((_) {
-                _loadUserMusic();
-              });
+              if (isPlaying) {
+                _pauseMusic();
+              } else {
+                _playMusic(music['audioUrl'], index, isUserMusic);
+              }
             },
           ),
-        ],
+        ),
+        title: Row(
+          children: [
+            Radio<String>(
+              value: music['id'],
+              groupValue: _selectedMusicId,
+              onChanged: (String? value) {
+                setState(() {
+                  _selectedMusicId = value;
+                });
+                _saveSelectedMusic(value!);
+              },
+              activeColor: const Color(0xFF4A148C),
+            ),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    music['title'],
+                    style: GoogleFonts.quicksand(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                      color: const Color(0xFF2E2E2E),
+                    ),
+                  ),
+                  Text(
+                    music['artist'],
+                    style: GoogleFonts.quicksand(
+                      fontSize: 14,
+                      color: Colors.grey[600],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        trailing: music['isDeletable']
+            ? IconButton(
+                icon: const Icon(Icons.delete_rounded, color: Colors.red, size: 24),
+                onPressed: () => _deleteMusic(music['id']),
+              )
+            : (isSelected 
+                ? const Icon(Icons.star, color: Color(0xFF4A148C), size: 24)
+                : Icon(Icons.music_note_rounded, color: Colors.grey[400])),
       ),
     );
+  }
+
+  Widget _buildUserMusicTab() {
+    return Column(
+      children: [
+        Container(
+          margin: const EdgeInsets.all(16),
+          child: ElevatedButton.icon(
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => AddMusicScreen(email: widget.email)),
+            ).then((_) => _loadUserMusic()),
+            icon: const Icon(Icons.add_rounded),
+            label: Text('Adicionar Música', style: GoogleFonts.quicksand(fontWeight: FontWeight.bold)),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF4A148C),
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            ),
+          ),
+        ),
+        Expanded(
+          child: _isLoading
+              ? const Center(child: CircularProgressIndicator(color: Color(0xFF4A148C)))
+              : _userMusicList.isEmpty
+                  ? Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.music_off_rounded, size: 64, color: Colors.grey[400]),
+                          const SizedBox(height: 16),
+                          Text(
+                            'Nenhuma música adicionada',
+                            style: GoogleFonts.quicksand(
+                              fontSize: 18,
+                              color: Colors.grey[600],
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                  : ListView.builder(
+                      itemCount: _userMusicList.length,
+                      itemBuilder: (context, index) {
+                        return _buildMusicItem(_userMusicList[index], index, true);
+                      },
+                    ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDefaultMusicTab() {
+    return ListView.builder(
+      padding: const EdgeInsets.symmetric(vertical: 16),
+      itemCount: _defaultMusicList.length,
+      itemBuilder: (context, index) {
+        return _buildMusicItem(_defaultMusicList[index], index, false);
+      },
+    );
+  }
+
+  void _onItemTapped(int index) {
+    setState(() => _selectedIndex = index);
+    switch (index) {
+      case 0:
+        Navigator.pushReplacement(context, 
+          MaterialPageRoute(builder: (context) => HomeScreen(email: widget.email)));
+        break;
+      case 1:
+        Navigator.pushReplacement(context, 
+          MaterialPageRoute(builder: (context) => const AboutScreen()));
+        break;
+      case 2:
+        Navigator.pushReplacement(context, 
+          MaterialPageRoute(builder: (context) => ProfileScreen(userEmail: widget.email)));
+        break;
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final Color primaryPurple = Theme.of(context).primaryColor;
     return Scaffold(
-      backgroundColor: primaryPurple,
+      backgroundColor: Theme.of(context).primaryColor,
       appBar: AppBar(
         title: Text(
           'DoroTEA',
@@ -323,73 +379,46 @@ class _MusicSelectionScreenState extends State<MusicSelectionScreen> {
             fontWeight: FontWeight.bold,
             fontSize: 24,
             letterSpacing: 1.2,
+            color: Colors.white,
           ),
         ),
-        elevation: 0,
         backgroundColor: Colors.transparent,
+        elevation: 0,
+        bottom: TabBar(
+          controller: _tabController,
+          indicatorColor: Colors.white,
+          indicatorWeight: 3,
+          labelColor: Colors.white,
+          unselectedLabelColor: Colors.white70,
+          labelStyle: GoogleFonts.quicksand(fontWeight: FontWeight.bold, fontSize: 16),
+          tabs: const [
+            Tab(text: 'Músicas Padrão'),
+            Tab(text: 'Minhas Músicas'),
+          ],
+        ),
       ),
-      body: RefreshIndicator(
-        onRefresh: _loadUserMusic, // ✅ corrigido
-        child: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildAddMusicCard(),
-              _buildMusicSectionHeader('Músicas do Usuário'),
-              if (_userMusicList.isEmpty)
-                const Padding(
-                  padding: EdgeInsets.all(16.0),
-                  child: Center(
-                    child: Text(
-                      'Nenhuma música adicionada ainda.',
-                      style: TextStyle(color: Colors.white),
-                    ),
-                  ),
-                )
-              else
-                ListView.builder(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: _userMusicList.length,
-                  itemBuilder: (context, index) {
-                    final music = _userMusicList[index];
-                    return _buildMusicItem(context, music, index);
-                  },
-                ),
-              _buildMusicSectionHeader('Músicas Padrão'),
-              ListView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: _defaultMusicList.length,
-                itemBuilder: (context, index) {
-                  final music = _defaultMusicList[index];
-                  return _buildMusicItem(
-                      context, music, _userMusicList.length + index);
-                },
-              ),
-            ],
-          ),
+      body: Container(
+        decoration: BoxDecoration(
+          color: Theme.of(context).primaryColor,
+        ),
+        child: TabBarView(
+          controller: _tabController,
+          children: [
+            _buildDefaultMusicTab(),
+            _buildUserMusicTab(),
+          ],
         ),
       ),
       bottomNavigationBar: BottomNavigationBar(
-        backgroundColor: primaryPurple,
+        backgroundColor: Theme.of(context).primaryColor,
         selectedItemColor: Colors.white,
-        unselectedItemColor: Colors.white.withOpacity(0.7),
+        unselectedItemColor: Colors.white70,
         currentIndex: _selectedIndex,
         onTap: _onItemTapped,
-        items: const <BottomNavigationBarItem>[
-          BottomNavigationBarItem(
-            icon: Icon(Icons.home),
-            label: 'Home',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.pets),
-            label: 'DoroTEA',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.person),
-            label: 'Perfil',
-          ),
+        items: const [
+          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
+          BottomNavigationBarItem(icon: Icon(Icons.pets), label: 'DoroTEA'),
+          BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Perfil'),
         ],
       ),
     );
